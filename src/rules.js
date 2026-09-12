@@ -1,6 +1,6 @@
 // Rule catalogue for skill-audit.
 // Each rule: { id, severity, category, title, appliesTo, remediation, pattern? , detect? }
-//  - appliesTo: "prose" (markdown text), "code" (scripts + md code blocks), or "any"
+//  - appliesTo: "prose" (markdown, .txt, .yaml/.yml), "code" (scripts + md code blocks), or "any"
 //  - pattern: a global RegExp; every match becomes a finding
 //  - detect: (text) => [{ index, match }]  for checks a single regex can't express
 //
@@ -38,6 +38,11 @@ export const RULES = [
     remediation: "The skill text describes sending secrets/tokens/credentials somewhere. Treat as malicious until proven otherwise.",
     pattern: /(exfiltrate|leak|send|upload|post|forward)\b[^.\n]{0,30}(secret|token|password|credential|private\s*key|api[\s_-]?key|\.env)/gi },
 
+  { id: "SKILL-INJ-009", severity: "high", category: "prompt-injection", appliesTo: "prose",
+    title: "Solicits credentials from the user",
+    remediation: "Skills must not ask the user to paste passwords, API keys, seed phrases, or other secrets into the chat.",
+    pattern: /(paste|enter|provide|share|type|input)\b[^.\n]{0,25}\b(your\s+)?(api[\s_-]?key|password|token|credentials?|secret|seed\s+phrase|private\s+key)/gi },
+
   { id: "SKILL-INJ-006", severity: "high", category: "obfuscation", appliesTo: "any",
     title: "Hidden zero-width or bidirectional Unicode",
     remediation: "Invisible characters are used to smuggle instructions past human review. Remove them.",
@@ -60,9 +65,9 @@ export const RULES = [
     pattern: /(curl|wget)\b[^\n|]*\|\s*(sudo\s+)?(sh|bash|zsh|python[0-9.]*|node)\b/gi },
 
   { id: "SKILL-SH-003", severity: "medium", category: "dangerous-shell", appliesTo: "code",
-    title: "Privilege escalation via sudo, doas, or run0",
-    remediation: "A skill running sudo, doas, or run0 can change the whole system. Confirm it is truly required.",
-    pattern: /(^|[\s;&|(])(?:sudo|doas|run0)\s+/gm },
+    title: "Privilege escalation via sudo, doas, run0, or pkexec",
+    remediation: "A skill running sudo, doas, run0, or pkexec can change the whole system. Confirm it is truly required.",
+    pattern: /(^|[\s;&|(])(?:sudo|doas|run0|pkexec)\s+/gm },
 
   { id: "SKILL-SH-004", severity: "critical", category: "dangerous-shell", appliesTo: "code",
     title: "Fork bomb",
@@ -98,7 +103,7 @@ export const RULES = [
   { id: "SKILL-SEC-003", severity: "medium", category: "secret-access", appliesTo: "code",
     title: "Dumps the full environment / dotenv",
     remediation: "printenv, os.environ, or reading .env wholesale often precedes exfiltration.",
-    pattern: /(\bprintenv\b|os\.environ\b(?!\.get)|\bdotenv\b|(cat|source|read|open)\s+[^\n]*\.env\b)/gi },
+    pattern: /(\bprintenv\b|os\.environ\b(?!\.get)|os\.getenv\s*\(|process\.env\b|\bdotenv\b|(cat|source|read|open)\s+[^\n]*\.env\b)/gi },
 
   { id: "SKILL-SEC-004", severity: "medium", category: "secret-access", appliesTo: "code",
     title: "Accesses the OS keychain / secret store",
@@ -131,6 +136,11 @@ export const RULES = [
     title: "Clones and immediately executes a repo",
     remediation: "git clone chained into sh/python/node runs unaudited third-party code.",
     pattern: /git\s+clone\b[^\n]*&&[^\n]*(sh|bash|python[0-9.]*|node|make)\b/gi },
+
+  { id: "SKILL-SUP-003", severity: "high", category: "supply-chain", appliesTo: "code",
+    title: "Fetches code or packages over plaintext HTTP",
+    remediation: "http:// is vulnerable to MITM substitution of scripts or packages. Use https:// or verify checksums.",
+    pattern: /\bhttp:\/\//gi },
 
   // ---- Obfuscation ----
   { id: "SKILL-OBF-001", severity: "critical", category: "obfuscation", appliesTo: "code",
@@ -170,6 +180,11 @@ export const RULES = [
     remediation: "Login Data, Cookies, key4.db, or logins.json hold saved passwords and sessions.",
     pattern: /(Login[\s\\'"]{0,3}Data|key4\.db|logins\.json|cookies\.sqlite|\bCookies\b(?=[^a-z]))/g },
 
+  { id: "SKILL-SEC-006", severity: "high", category: "secret-access", appliesTo: "any",
+    title: "Disables TLS certificate verification",
+    remediation: "Turning off TLS verification invites MITM attacks. Use proper CAs or pin certificates instead.",
+    pattern: /(NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['"]?0\b|curl\b[^\n]*?(-k|--insecure\b)|wget\b[^\n]*--no-check-certificate|verify\s*=\s*False|ssl\._create_unverified_context|rejectUnauthorized\s*:\s*false)/gi },
+
   // ---- Persistence ----
   { id: "SKILL-SH-008", severity: "medium", category: "persistence", appliesTo: "code",
     title: "Installs persistence (cron, shell rc, launch/systemd unit)",
@@ -181,6 +196,11 @@ export const RULES = [
     title: "Clears shell history / covers tracks",
     remediation: "history -c, unset HISTFILE, or truncating .bash_history is used to hide what was run.",
     pattern: /(history\s+-c\b|unset\s+HISTFILE|>\s*~?\/?\.bash_history)/g },
+
+  { id: "SKILL-SH-010", severity: "critical", category: "persistence", appliesTo: "code",
+    title: "Plants SSH access (authorized_keys / ~/.ssh write)",
+    remediation: "Writing to authorized_keys or under ~/.ssh grants persistent remote login. Never ship this in a skill.",
+    pattern: /(authorized_keys\b|(>>|>)\s*~?\/?\.ssh\/)/gi },
 
   // ---- Dynamic code execution ----
   { id: "SKILL-OBF-003", severity: "medium", category: "obfuscation", appliesTo: "code",
