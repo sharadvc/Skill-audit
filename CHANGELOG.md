@@ -3,6 +3,29 @@
 All notable changes to this project are documented here, following
 [Keep a Changelog](https://keepachangelog.com/) and semantic versioning.
 
+## [Unreleased]
+
+### Fixed
+
+- Report scannable files that exceed the 2 MB size limit or cannot be read instead of
+  skipping them silently; include them in text and JSON output, log warnings on stderr,
+  and exit with code 1 when any file was skipped.
+
+### Added
+
+- **SKILL-SUP-003**: flag code that fetches scripts or packages over plaintext `http://`.
+- Rule `SKILL-SH-010` (critical, code): flags SSH key planting via
+  `authorized_keys` or shell redirects into `~/.ssh/`.
+- Test coverage for rejecting invalid `--fail-on` severity values at the CLI.
+- **SKILL-SEC-006**: flag TLS verification disabling (`NODE_TLS_REJECT_UNAUTHORIZED=0`,
+  `curl -k` / `--insecure`, `wget --no-check-certificate`, `verify=False`,
+  `ssl._create_unverified_context`, `rejectUnauthorized: false`).
+
+### Fixed
+
+- Apply prompt-injection (`prose`) rules to `.txt` and `.yaml`/`.yml` files, not only markdown.
+- Include `dist/` and `build/` when walking a skill directory so bundled scripts that agents actually execute are audited.
+
 ## [0.1.6] - 2026-09-11
 
 ### Fixed
